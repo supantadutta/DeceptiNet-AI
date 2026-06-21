@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deceptinet-ai"
+version = "0.1.0"
+description = "Adaptive LLM-Based Honeypot for Threat Intelligence Collection (thesis research instrument)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "See LICENSE / thesis terms" }
+authors = [{ name = "DeceptiNet-AI" }]
+dependencies = [
+    "asyncssh==2.21.0",
+    "PyYAML==6.0.1",
+    "pydantic==2.9.2",
+    "SQLAlchemy==2.0.36",
+    "fastapi==0.115.5",
+    "uvicorn==0.32.1",
+    "psycopg2-binary==2.9.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.3", "pytest-asyncio==0.24.0"]
+
+[project.scripts]
+deceptinet = "deceptinet.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["deceptinet*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

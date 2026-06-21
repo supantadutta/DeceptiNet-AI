@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# DeceptiNet runtime artifacts (never commit captured data or keys)
+/data/
+/var/
+*.sqlite
+*.sqlite3
+*.db
+hostkeys/
+*.pem
+ssh_host_*
+run/
+*.log
+
+# Local env / secrets
+.env
+.env.local
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

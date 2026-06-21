@@ -1,0 +1,11 @@
+# DeceptiNet-AI runtime dependencies
+# Pinned for thesis reproducibility. Exact pins are refreshed from `pip freeze`
+# (see REPRODUCIBILITY.md). Phase 7 will add a full lockfile.
+
+asyncssh==2.21.0
+PyYAML==6.0.1
+pydantic==2.9.2
+SQLAlchemy==2.0.36
+fastapi==0.115.5
+uvicorn==0.32.1
+psycopg2-binary==2.9.10
