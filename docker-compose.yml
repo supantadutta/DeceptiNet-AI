@@ -1,0 +1,66 @@
+# DeceptiNet-AI — primary deployment (spec §3).
+#
+# CONTAINMENT (spec §2.3, non-negotiable): the honeypot attaches ONLY to an
+# `internal: true` network, which Docker provisions with NO route to the
+# internet. The honeypot therefore cannot make outbound connections (default
+# -deny egress) — it can reach only Postgres on the same internal network.
+# Ingress still works: published ports are handled by host-side DNAT, which is
+# independent of the container's (absent) egress route.
+#
+# Phase 2 note: `allow_llm_only` egress (reaching an LLM endpoint) will require
+# an explicit egress proxy/allowlist; it is NOT configured here. See ETHICS.md.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: deceptinet
+      POSTGRES_PASSWORD: deceptinet
+      POSTGRES_DB: deceptinet
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deceptinet"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # No published ports: the datastore is never exposed to the host/internet.
+
+  deceptinet:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DECEPTINET_MODE: "vanilla"            # llm = Phase 2
+      DECEPTINET_EXPERIMENT_ID: "exp-001"
+      DECEPTINET_DATASTORE_URL: "postgresql://deceptinet:deceptinet@db:5432/deceptinet"
+      DECEPTINET_EGRESS: "deny"
+      DECEPTINET_LOG_LEVEL: "INFO"
+    ports:
+      - "2222:2222"   # SSH honeypot (map host 22 -> 2222 in production; see README)
+      - "8000:8000"   # read-only health/dashboard endpoint
+    volumes:
+      - hostkeys:/data
+    networks:
+      - internal      # ONLY this network => no egress to the internet
+    # Defense-in-depth: the honeypot must not be exploitable (spec §7).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true   # <-- default-deny egress lives here
+
+volumes:
+  pgdata:
+  hostkeys:

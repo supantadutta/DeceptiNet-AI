@@ -1,0 +1,39 @@
+# DeceptiNet-AI — single-container deployment (SQLite, no Postgres).
+#
+# Simplest path for a laptop or a constrained host. Same containment posture as
+# the primary stack: the honeypot attaches only to an `internal: true` network
+# (default-deny egress). The datastore is a SQLite file on a named volume.
+#
+#   docker compose -f docker-compose.singlecontainer.yml up -d --build
+
+services:
+  deceptinet:
+    build: .
+    environment:
+      DECEPTINET_MODE: "vanilla"
+      DECEPTINET_EXPERIMENT_ID: "exp-001"
+      DECEPTINET_DATASTORE_URL: "sqlite:////data/deceptinet.sqlite3"
+      DECEPTINET_EGRESS: "deny"
+      DECEPTINET_LOG_LEVEL: "INFO"
+    ports:
+      - "2222:2222"
+      - "8000:8000"
+    volumes:
+      - dndata:/data
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
+
+volumes:
+  dndata:
