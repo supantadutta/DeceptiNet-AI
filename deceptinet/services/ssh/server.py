@@ -159,6 +159,11 @@ class SSHHoneypot:
 
     # ---- process handling (interactive shell / exec) -----------------
     async def _handle_process(self, process: asyncssh.SSHServerProcess) -> None:
+        # Track this handler so stop()/drain() await it before teardown.
+        task = asyncio.current_task()
+        if task is not None:
+            self._bg_tasks.add(task)
+            task.add_done_callback(self._bg_tasks.discard)
         ctx: _ConnCtx | None = process.get_extra_info("honeypot_ctx")
         if ctx is None:  # pragma: no cover - should never happen
             _log.error("no honeypot_ctx on process; closing")

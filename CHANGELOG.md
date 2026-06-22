@@ -2,6 +2,34 @@
 
 All notable changes to DeceptiNet-AI. Format loosely follows Keep a Changelog.
 
+## [0.5.0] — Phase 5 (LLM-vs-vanilla comparison harness — the thesis core)
+
+### Added
+- **Comparison harness** (`analysis/{metrics,stats,compare,report,harness}.py`):
+  per-session engagement (RQ1) / intelligence (RQ2) / cost-latency (RQ3) metrics,
+  aggregated per mode and **segmented by session classification**, with
+  Mann-Whitney U tests, rank-biserial effect sizes, and bootstrap 95% CIs for the
+  median difference. Leads with medians (heavy-tailed data); marks
+  `insufficient_data` below a minimum group size.
+- **Outputs to `paper/`**: `comparison_tests.csv`, `comparison_descriptives.csv`,
+  `comparison_table.tex`, box-plot distribution `figures/*.png` (matplotlib
+  optional), and a provenance `manifest.json`. Every number traces to the manifest.
+- **Both experiment designs (spec §5):** time-interleaved (runtime `mode` flip
+  every `experiment.interleave_minutes`, rebuilding engine + listeners) and
+  parallel A/B (two-stack deployment recipe in `experiments/README.md`).
+- `scripts/experiment.py` + `make experiment`; `RESULTS_TEMPLATE.md` (how to read
+  results, incl. null/negative findings); `experiments/exp-001.example.yaml`.
+- Deps: numpy, scipy, matplotlib. README/ARCHITECTURE gain a **Mermaid** diagram.
+
+### Tests
+- 110 passing (adds statistics, an end-to-end capture→analyze→compare→render
+  harness test, and the runtime mode-flip). No live LLM; **no fabricated results**.
+
+### Notes / limitations
+- This repo contains **no results** — no attacker data is captured here. The
+  harness on an empty/single-arm store reports `insufficient_data`. Classifier
+  calibration remains the RQ1 gate. See LIMITATIONS.md §A5.
+
 ## [0.4.0] — Phase 4 (classification + IOC + MITRE ATT&CK intel)
 
 ### Added

@@ -14,10 +14,10 @@ conditions.
 
 ## Build status — Phases 0–3 complete
 
-This repository implements **Phase 0** (scaffolding & guardrails), **Phase 1**
-(SSH, vanilla), **Phase 2** (adaptive LLM response engine), **Phase 3** (HTTP,
-MySQL, POP3 — both modes), and **Phase 4** (session classification + IOC /
-MITRE ATT&CK intel). Later phases are present only as honest stubs.
+This repository implements **Phase 0** (scaffolding), **Phase 1** (SSH, vanilla),
+**Phase 2** (adaptive LLM engine), **Phase 3** (HTTP, MySQL, POP3 — both modes),
+**Phase 4** (classification + IOC / ATT&CK intel), and **Phase 5** (the
+LLM-vs-vanilla comparison harness — the thesis core). Later phases are honest stubs.
 
 | Capability | Status |
 |---|---|
@@ -34,7 +34,8 @@ MITRE ATT&CK intel). Later phases are present only as honest stubs.
 | Health endpoint | ✅ implemented |
 | Session classifier (automated/human-like/…) + confidence | ✅ Phase 4 |
 | IOC extractor + MITRE ATT&CK mapper + intel report | ✅ Phase 4 |
-| Comparison harness + statistics + figures | ⛔ Phase 5 (NOT IMPLEMENTED) |
+| Comparison harness: metrics + non-parametric stats + figures/tables | ✅ Phase 5 |
+| Experiment designs: parallel A/B + time-interleaved | ✅ Phase 5 |
 | Full dashboard UI | ⛔ Phase 6 (minimal health/stats only) |
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the component diagram and
@@ -187,46 +188,27 @@ scripts/          show_sessions.py (read-only datastore inspector)
 
 Full diagram, component status, and request lifecycle: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-```
-  Attacker / scanner
-        │  SSH :2222   HTTP :8080   MySQL :3306   POP3 :1100
-        ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │ Protocol Emulation Layer        deceptinet/services/          │
-  │  ssh · http · mysql · pop3  — parse input, NEVER execute      │
-  └──────────────────────────────────────────────────────────────┘
-        │  request + SessionState
-        ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │ Response Engine (the A/B switch)        deceptinet/engine/     │
-  │  mode=vanilla → templated (Cowrie-style)                      │
-  │  mode=llm     → vanilla for known + LLM for novel:            │
-  │                 cache → provider(+fallback) → leak-guard       │
-  │  providers: claude | ollama | openai_compat | static          │
-  └──────────────────────────────────────────────────────────────┘
-        │  EngineResult (output, latency, tokens, cache_hit)
-        ▼
-  ┌───────────────────────────┐   ┌──────────────────────────────┐
-  │ Session State + virtual FS │   │ Telemetry capture (off-loop)  │
-  │ deceptinet/session/        │   │ deceptinet/telemetry/         │
-  └───────────────────────────┘   └──────────────┬───────────────┘
-                                                  ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │ Datastore  (SQLite / Postgres)   deceptinet/datastore/        │
-  │  sessions · credentials · events · iocs · techniques          │
-  └──────────────────────────────────────────────────────────────┘
-        │
-        ▼
-  ┌───────────────────────────┐   ┌──────────────────────────────┐
-  │ Analysis  deceptinet/      │   │ Dashboard / API               │
-  │ analysis/ (intel: class-   │   │ deceptinet/dashboard/         │
-  │ ification + IOC + ATT&CK;  │   │  /health, /stats              │
-  │ comparison harness=Phase 5)│   │  (full UI = Phase 6)          │
-  └───────────────────────────┘   └──────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Attacker / scanner<br/>SSH 2222 · HTTP 8080 · MySQL 3306 · POP3 1100"]
+    EXP["Protocol Emulation — services/<br/>ssh · http · mysql · pop3 (never execute)"]
+    ENG["Response Engine — engine/ (A/B switch)<br/>vanilla = templated · llm = vanilla+LLM for novel<br/>cache → provider(+fallback) → leak-guard"]
+    SESS["Session State + virtual FS — session/"]
+    TEL["Telemetry capture (off event loop) — telemetry/"]
+    DB[("Datastore — SQLite/Postgres<br/>sessions · credentials · events · iocs · techniques")]
+    ANA["Analysis — analysis/<br/>intel (class+IOC+ATT&CK, P4) · harness (stats+figures, P5)"]
+    DASH["Dashboard/API — /health · /stats (full UI = P6)"]
 
-  Containment (deceptinet/containment/): kill switch + default-deny egress
-  Config (deceptinet/config/): single source of truth (config.yaml)
+    A --> EXP --> ENG
+    ENG --> SESS
+    SESS -. consistency .-> ENG
+    ENG --> TEL --> DB
+    DB --> ANA
+    DB --> DASH
 ```
+
+Containment (`containment/`): kill switch + default-deny egress. Config
+(`config/`): single source of truth (`config.yaml`).
 
 ## Generate an intelligence report
 
@@ -236,6 +218,21 @@ After capturing sessions, classify them and extract IOCs + ATT&CK techniques:
 python scripts/analyze.py --all            # JSON reports; also persists results
 python scripts/analyze.py --session <id>   # one session
 ```
+
+## Run the A/B comparison (the thesis core)
+
+Once you've collected sessions in both modes (see `experiments/README.md` for the
+parallel-A/B and time-interleaved designs), run the harness:
+
+```bash
+make experiment        # -> paper/: CSV + LaTeX tables, distribution figures, manifest
+```
+
+It computes engagement / intelligence / cost metrics per mode, **segmented by
+session classification**, with Mann-Whitney U tests, rank-biserial effect sizes,
+and bootstrap CIs. Read the output with [`RESULTS_TEMPLATE.md`](RESULTS_TEMPLATE.md).
+With too few sessions it honestly reports `insufficient_data` — it never
+fabricates numbers.
 
 ## Documentation
 

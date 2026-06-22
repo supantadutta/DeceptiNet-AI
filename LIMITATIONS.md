@@ -7,9 +7,6 @@ capability does not exist yet (it is a stub), not that it is hidden.
 
 ## A. Not implemented yet (by phase) — these are explicit stubs
 
-- **Comparison harness + statistics + figures (Phase 5).** Not implemented.
-  There are **no results, no benchmark numbers, and no figures** in this repo,
-  and none will be fabricated.
 - **Full dashboard (Phase 6).** Only `/health` and `/stats` exist. No live
   session view / replay UI yet.
 - **Reproducibility tooling / `make experiment` (Phase 7).** `make experiment`
@@ -90,6 +87,31 @@ capability does not exist yet (it is a stub), not that it is hidden.
   detection engine — coverage is a curated rules table (a subset of techniques)
   and false positives/negatives are expected.
 
+## A5. Comparison harness (Phase 5) — implemented, with these caveats
+
+- **No real A/B dataset was collected here.** The harness, metrics, statistics
+  (Mann-Whitney U, rank-biserial effect size, bootstrap CIs), CSV/LaTeX tables,
+  figures, and manifest are implemented and **tested on a controlled in-test
+  dataset**, but this repo contains **no results** — there is no captured
+  attacker data, and none is fabricated. Running `make experiment` on an empty
+  or single-arm datastore correctly reports `insufficient_data`.
+- **Statistical validity needs adequate n per segment per mode** (`MIN_GROUP_N`,
+  default 5). Heavy-tailed honeypot data and the bot-vs-human split mean you need
+  meaningful volume in each cell before any test is interpretable.
+- **Classifier calibration remains the gating risk for RQ1** (see §A4). The
+  harness segments by classification, but those labels are only as good as the
+  (currently uncalibrated) classifier.
+- **Latency jitter on cached responses** (`latency.inject_jitter_on_cache`) is
+  still inert; latency-fingerprinting analysis beyond the captured per-event
+  latency is future work.
+- **Time-interleaved flipping** rebuilds engine + listeners in-process; a flip
+  briefly drops/re-binds listeners. Parallel A/B requires two stacks/IPs (a
+  deployment recipe, documented in `experiments/README.md`, not a single
+  command). Multiple-comparison correction across the metric×segment grid is the
+  analyst's responsibility (noted in `RESULTS_TEMPLATE.md`).
+- **Figures require matplotlib**; if absent, figures are skipped (a note is
+  written) and tables still render.
+
 ## B. Verified vs. NOT verified in this build environment
 
 - ✅ **Application verified end-to-end without Docker.** `python -m deceptinet`
@@ -98,9 +120,12 @@ capability does not exist yet (it is a stub), not that it is hidden.
   timestamps, persisted virtual-FS state) was captured to the datastore. The
   `/health` and `/stats` endpoints responded. All four services were also run
   together as a real process and captured HTTP/MySQL/POP3 interactions; the
-  Phase 4 analyzer produced real intel reports over that capture. 102 tests pass
-  (incl. the LLM engine, the four protocol adapters, and the classifier / IOC /
-  ATT&CK / intel pipeline — all with fakes/mocks, no live LLM).
+  Phase 4 analyzer produced real intel reports over that capture, and the Phase 5
+  harness CLI ran on it (honestly reporting `insufficient_data` with no LLM arm).
+  110 tests pass (incl. the LLM engine, the four protocol adapters, the
+  classifier / IOC / ATT&CK / intel pipeline, and the comparison harness +
+  statistics — all with fakes/mocks/controlled data, no live LLM, no fabricated
+  results).
 - ⚠️ **`docker compose up` was NOT executed here.** The build environment's
   network policy blocks the Docker registry (Docker Hub CDN returns HTTP 403),
   so the `python:3.11-slim` base image could not be pulled and no image could be

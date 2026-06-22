@@ -39,10 +39,21 @@ python scripts/show_sessions.py --events
   stable across restarts.
 - Seed control for the (future) LLM arm and any sampling is a Phase 7 item.
 
+## Reproduce the analysis pipeline (Phase 5)
+
+```bash
+make experiment            # analyse captured sessions -> paper/ (tables, figures, manifest)
+python scripts/experiment.py --db <url> --experiment-id <id>
+```
+
+`paper/manifest.json` records the provenance of each run (datastore, experiment
+id, session counts per segment/mode, tool versions). On an empty/single-arm
+datastore the harness reports `insufficient_data` rather than inventing numbers.
+
 ## To be written (Phase 7, do not cite as done)
 
-- `make experiment`: one command that records exactly how a result set was
-  produced (config, mode schedule, time window, dataset hash).
 - A small, clearly-labelled **synthetic** dataset for CI so the analysis
-  pipeline can be exercised without real captures.
+  pipeline can be exercised without real captures (the test suite already
+  exercises it on controlled in-test data).
 - Hash-pinned dependency lockfile.
+- Seed control for the LLM arm / any sampling.

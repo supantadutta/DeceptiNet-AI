@@ -53,9 +53,9 @@ run-local: ## Run the honeypot directly (no Docker; SQLite datastore)
 	@[ -x $(VENV)/bin/python ] || $(MAKE) venv
 	$(VENV)/bin/python -m deceptinet
 
-experiment: ## (Phase 5) Run the A/B comparison harness
-	@echo "make experiment is NOT IMPLEMENTED yet (Phase 5). See LIMITATIONS.md."
-	@exit 1
+experiment: ## Run the A/B comparison harness over captured data (-> paper/)
+	@[ -x $(VENV)/bin/python ] || $(MAKE) venv
+	$(VENV)/bin/python scripts/experiment.py
 
 clean: ## Remove local runtime artifacts (data/, caches). Keeps source.
 	rm -rf data/ .pytest_cache __pycache__ */__pycache__ */*/__pycache__

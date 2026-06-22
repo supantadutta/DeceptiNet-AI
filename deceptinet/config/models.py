@@ -169,6 +169,20 @@ class LoggingConfig(BaseModel):
     level: str = "INFO"
 
 
+class ExperimentConfig(BaseModel):
+    """Phase 5 experiment-design controls.
+
+    ``interleave_minutes`` > 0 enables the *time-interleaved* A/B design (spec
+    §5b): the runner flips ``mode`` between vanilla and llm on that cadence so a
+    single endpoint alternates arms over time (same IP/reputation). 0 disables it
+    (use a fixed ``mode``, or the *parallel A/B* design — two stacks — instead).
+    """
+
+    model_config = {"extra": "forbid"}
+
+    interleave_minutes: int = Field(default=0, ge=0)
+
+
 class Config(BaseModel):
     """Top-level DeceptiNet-AI configuration (the ``deceptinet:`` block)."""
 
@@ -186,3 +200,4 @@ class Config(BaseModel):
     auth: AuthConfig = Field(default_factory=AuthConfig)
     health: HealthConfig = Field(default_factory=HealthConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    experiment: ExperimentConfig = Field(default_factory=ExperimentConfig)

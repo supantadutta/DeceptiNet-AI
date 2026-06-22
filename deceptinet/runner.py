@@ -68,6 +68,13 @@ class Application:
 
         self._maybe_prewarm()
         self._tasks.append(asyncio.create_task(self._watch_kill_switch()))
+        if self.config.experiment.interleave_minutes > 0:
+            self._tasks.append(asyncio.create_task(self._interleave_loop()))
+            _log.info(
+                "time-interleaved A/B enabled",
+                extra={"interleave_minutes": self.config.experiment.interleave_minutes,
+                       "event": "interleave_enabled"},
+            )
 
     def _maybe_prewarm(self) -> None:
         """Pre-warm the LLM cache in the background (spec §2.2), if configured.
@@ -157,6 +164,31 @@ class Application:
                 await asyncio.wait_for(self._stop.wait(), timeout=1.0)
             except asyncio.TimeoutError:
                 pass
+
+    async def _flip_mode(self) -> str:
+        """Toggle the experimental mode and rebuild the engine/augmentor +
+        services so subsequent sessions are recorded under the new mode
+        (time-interleaved A/B, spec §5b)."""
+        new_mode = "llm" if self.config.mode == "vanilla" else "vanilla"
+        self.config.mode = new_mode
+        self.engine = get_engine(self.config)
+        if self.augmentor is not None:
+            await self.augmentor.aclose()
+        self.augmentor = build_augmentor(self.config)
+        if self._services:  # only churn listeners if currently running
+            await self._stop_services()
+            await self._start_services()
+        _log.warning("flipped experimental mode",
+                     extra={"mode": new_mode, "event": "mode_flip"})
+        return new_mode
+
+    async def _interleave_loop(self) -> None:
+        period = self.config.experiment.interleave_minutes * 60
+        while not self._stop.is_set():
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=period)
+            except asyncio.TimeoutError:
+                await self._flip_mode()
 
     async def serve_forever(self) -> None:
         await self.start()

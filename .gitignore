@@ -25,6 +25,13 @@ ssh_host_*
 run/
 *.log
 
+# Generated analysis artifacts (never commit results; they come from captures)
+/paper/*.csv
+/paper/*.tex
+/paper/manifest.json
+/paper/figures/
+/paper/FIGURES_SKIPPED.txt
+
 # Local env / secrets
 .env
 .env.local

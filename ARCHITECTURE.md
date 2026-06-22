@@ -7,6 +7,51 @@ exists. See `LIMITATIONS.md` for the honest gap list.
 
 ## 1. High-level diagram
 
+```mermaid
+flowchart TD
+    A["Attacker / scanner<br/>SSH 2222 · HTTP 8080 · MySQL 3306 · POP3 1100"]
+
+    subgraph EXP["Exposure + Protocol Emulation — deceptinet/services/"]
+        SSH["ssh<br/>(asyncssh: banner, keys, PTY/exec)"]
+        HTTP["http<br/>(HTTP/1.1, templates, probe tagging)"]
+        MYSQL["mysql<br/>(handshake + COM_QUERY subset)"]
+        POP3["pop3<br/>(USER/PASS/LIST/RETR/...)"]
+    end
+
+    subgraph ENG["Response Engine — deceptinet/engine/ (the A/B switch)"]
+        VAN["mode=vanilla<br/>templated (Cowrie-style)"]
+        LLM["mode=llm<br/>vanilla for known + LLM for novel:<br/>cache → provider(+fallback) → leak-guard"]
+        PROV["providers: claude · ollama · openai_compat · static"]
+    end
+
+    SESS["Session State + virtual FS<br/>deceptinet/session/"]
+    TEL["Telemetry capture (off event loop)<br/>deceptinet/telemetry/"]
+    DB[("Datastore — SQLite / Postgres<br/>sessions · credentials · events · iocs · techniques")]
+
+    subgraph ANA["Analysis — deceptinet/analysis/"]
+        INTEL["intel: classification + IOC + ATT&CK (Phase 4)"]
+        HARNESS["comparison harness: stats + figures (Phase 5)"]
+    end
+    DASH["Dashboard / API — /health, /stats<br/>(full UI = Phase 6)"]
+
+    CONT["Containment: kill switch + default-deny egress"]
+    CFG["Config: single source of truth (config.yaml)"]
+
+    A --> EXP
+    EXP --> ENG
+    LLM -.-> PROV
+    ENG --> SESS
+    ENG --> TEL
+    SESS -. consistency .-> ENG
+    TEL --> DB
+    DB --> ANA
+    DB --> DASH
+    CONT -. wraps .-> EXP
+    CFG -. configures .-> ENG
+```
+
+A plain-text rendering of the same flow (for terminals that don't render Mermaid):
+
 ```
    Attacker / scanner
           │  SSH :2222   HTTP :8080   MySQL :3306   POP3 :1100
@@ -80,9 +125,10 @@ exists. See `LIMITATIONS.md` for the honest gap list.
 | Telemetry recorder | `telemetry/recorder.py` | ✅ |
 | Classifier / IOC / ATT&CK mapper | `telemetry/{classifier,ioc,attack_map}.py` | ✅ Phase 4 |
 | Intel report (classification + IOC + ATT&CK) | `analysis/intel.py` | ✅ Phase 4 |
+| Comparison harness (metrics + stats + figures/tables) | `analysis/{metrics,stats,compare,report,harness}.py` | ✅ Phase 5 |
+| Experiment designs (parallel A/B + time-interleaved flip) | `runner.py`, `config` | ✅ Phase 5 |
 | Datastore (models + engine; +iocs/techniques) | `datastore/` | ✅ |
 | Dashboard (health/stats) | `dashboard/` | ✅ minimal (full UI Phase 6) |
-| Comparison harness + stats + figures | `analysis/` | ⛔ Phase 5 |
 | Runner / process orchestration | `runner.py`, `__main__.py` | ✅ |
 
 ## 3. Request lifecycle (SSH, one command)

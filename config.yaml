@@ -67,3 +67,8 @@ deceptinet:
 
   logging:
     level: "INFO"
+
+  experiment:                # Phase 5 A/B design
+    # 0 = fixed mode (use the parallel-A/B design: two stacks). >0 = time
+    # -interleaved: flip mode every N minutes on one endpoint (same IP).
+    interleave_minutes: 0

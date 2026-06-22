@@ -1,0 +1,19 @@
+# Example experiment run manifest (documentation only — not auto-consumed).
+# Record exactly how a result set was produced so it is reproducible. The
+# authoritative provenance is paper/manifest.json, written by the harness.
+experiment_id: exp-001
+design: time-interleaved        # "parallel-ab" | "time-interleaved"
+interleave_minutes: 60          # for time-interleaved
+services: [ssh, http, mysql, pop3]
+llm:
+  provider: ollama              # containment-preserving (local, no egress)
+  model: llama3
+  base_url: http://ollama:11434
+datastore: postgresql://deceptinet@db:5432/deceptinet
+window:
+  start: "2026-01-01T00:00:00Z"
+  end:   "2026-01-15T00:00:00Z"
+notes: |
+  Authorized deployment only (see ETHICS.md). Calibrate the session classifier
+  against hand-labelled sessions before citing RQ1 results (LIMITATIONS.md A4).
+  Analyse with: make experiment   (writes tables/figures/manifest to paper/).

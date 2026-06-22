@@ -59,12 +59,39 @@ confidence distribution alongside labels, and (c) segment **all** headline
 engagement metrics by classification (spec §2.1). Keystroke-level interactivity
 (tab/arrow keys) is not captured — interactivity is inferred from PTY + timing.
 
-## To be written (do not cite as done)
+## Experiment designs (Phase 5 — implemented)
 
-- **Experiment designs (Phase 5):** both (a) parallel A/B and (b)
-  time-interleaved, with their trade-offs.
-- **Metrics & statistics (Phase 5):** engagement, intelligence, and cost/latency
-  metrics per mode and per classification; non-parametric tests (e.g.
-  Mann–Whitney U) for heavy-tailed session-length distributions, effect sizes,
-  and confidence intervals. **No mean will be reported without a distribution
-  and a test.** Null/negative results will be reported, not buried.
+Both designs from spec §5 are available (`experiments/README.md`):
+
+- **(a) Parallel A/B:** two stacks (two IPs/ports), one fixed to each mode, same
+  window, sharing/merging into one datastore. Pro: same threat landscape
+  concurrently. Con: attackers may hit both; IP reputation differs. A deployment
+  recipe (two `make up` invocations), not a single command.
+- **(b) Time-interleaved:** one endpoint flips `mode` every
+  `experiment.interleave_minutes` (the runner rebuilds the engine + listeners);
+  each session records the active mode. Pro: same IP/reputation. Con: temporal
+  traffic variation between windows; a flip briefly re-binds listeners.
+
+Neither removes the bot-vs-human confound — hence mandatory segmentation by
+classification.
+
+## Metrics & statistics (Phase 5 — implemented)
+
+Per session (`analysis/metrics.py`): engagement (duration, interaction count,
+depth, % exceeding N), intelligence (distinct commands, distinct ATT&CK
+techniques, IOC count, novel-payload count, credentials), cost/latency (mean/p95
+latency, LLM tokens, cache-hit rate), plus return-visit rate per mode.
+
+The harness (`analysis/{compare,stats}.py`) reports, per (segment, metric):
+median + IQR per mode, **Mann-Whitney U** (two-sided), **rank-biserial effect
+size** (sign: + = LLM > vanilla), and a **bootstrap 95% CI** for the median
+difference — never a bare mean. Below `MIN_GROUP_N` it reports
+`insufficient_data`. Outputs are CSV + LaTeX + distribution figures + a
+provenance manifest, interpreted via `RESULTS_TEMPLATE.md`. **Null/negative
+results are reported, not buried.**
+
+## Still to do before citing RQ results (do not cite as done)
+
+- **Calibrate the classifier** against hand-labelled sessions (the RQ1 gate).
+- **Collect adequate volume** per segment per mode (avoid `insufficient_data`).
+- **Correct for multiple comparisons** across the metric×segment grid.

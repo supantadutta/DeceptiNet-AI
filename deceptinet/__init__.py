@@ -6,6 +6,6 @@ filesystem mutation, and no real service backend. See ETHICS.md and README.md
 before deploying anything.
 """
 
-__version__ = "0.4.0"  # Phases 0-4 (+ classification, IOC, ATT&CK intel)
+__version__ = "0.5.0"  # Phases 0-5 (+ LLM-vs-vanilla comparison harness)
 
 __all__ = ["__version__"]
