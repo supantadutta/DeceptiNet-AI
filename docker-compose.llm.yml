@@ -1,0 +1,34 @@
+# DeceptiNet-AI — LLM mode override (containment-preserving).
+#
+# Adds a local Ollama LLM on the SAME `internal: true` network as the honeypot,
+# so the LLM honeypot runs with NO internet egress (spec §2.3). Apply it on top
+# of the base stack:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d --build
+#   # pull a model into the running ollama container, e.g.:
+#   docker compose exec ollama ollama pull llama3
+#
+# This file is config-valid; it was NOT runtime-verified in the build
+# environment because the image registry was blocked (see LIMITATIONS.md §B).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - internal          # local-only; no published ports, no egress
+    restart: unless-stopped
+
+  deceptinet:
+    environment:
+      DECEPTINET_MODE: "llm"
+      DECEPTINET_LLM_PROVIDER: "ollama"
+      # config.yaml's llm.base_url can also be set; this env override wins.
+      DECEPTINET_LLM_BASE_URL: "http://ollama:11434"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  ollama_models:

@@ -37,10 +37,12 @@ def test_loads_valid_config(tmp_path):
     assert cfg.services.ssh.port == 2222
 
 
-def test_llm_mode_rejected_in_phase1(tmp_path):
+def test_llm_mode_accepted(tmp_path):
+    # Phase 2: mode llm is now a valid configuration.
     text = _VALID.replace('mode: "vanilla"', 'mode: "llm"')
-    with pytest.raises(ValidationError, match="NOT IMPLEMENTED"):
-        load_config(_write(tmp_path, text))
+    cfg = load_config(_write(tmp_path, text))
+    assert cfg.mode == "llm"
+    assert cfg.llm.provider == "static"  # default; runnable with no API key
 
 
 def test_egress_allow_is_forbidden(tmp_path):

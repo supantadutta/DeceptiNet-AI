@@ -6,6 +6,6 @@ filesystem mutation, and no real service backend. See ETHICS.md and README.md
 before deploying anything.
 """
 
-__version__ = "0.1.0"  # Phases 0 + 1 (scaffolding + SSH vanilla honeypot)
+__version__ = "0.2.0"  # Phases 0-2 (scaffolding + SSH vanilla + adaptive LLM)
 
 __all__ = ["__version__"]

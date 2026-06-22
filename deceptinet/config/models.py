@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 Mode = Literal["llm", "vanilla"]
 Provider = Literal["claude", "ollama", "openai_compat", "static"]
@@ -73,6 +73,18 @@ class LLMConfig(BaseModel):
     temperature: float = Field(default=0.4, ge=0.0, le=2.0)
     timeout_s: float = Field(default=8.0, gt=0)
     fallback_provider: Provider = "static"
+    # Connection settings for non-Claude / self-hosted providers.
+    #   ollama        -> base_url like "http://ollama:11434"
+    #   openai_compat -> base_url like "http://vllm:8000/v1"
+    # api_key is optional; prefer an environment variable (api_key_env) so secrets
+    # stay out of config files. For Claude the SDK reads ANTHROPIC_API_KEY by default.
+    base_url: str | None = None
+    api_key: str | None = None
+    api_key_env: str | None = None
+    # Hybrid behaviour: when true, the LLM only handles commands the vanilla
+    # engine cannot (the "long tail"); known commands stay deterministic so
+    # session state remains consistent. See METHODOLOGY.md / DECISIONS.md.
+    augment_only: bool = True
 
 
 class CacheConfig(BaseModel):
@@ -174,16 +186,3 @@ class Config(BaseModel):
     auth: AuthConfig = Field(default_factory=AuthConfig)
     health: HealthConfig = Field(default_factory=HealthConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
-
-    @model_validator(mode="after")
-    def _phase1_guards(self) -> "Config":
-        # Phase 1 ships with the LLM engine unimplemented. Fail loud and early
-        # rather than silently behaving like vanilla if someone sets mode: llm.
-        # (Removed in Phase 2 when the LLM engine lands.)
-        if self.mode == "llm":
-            raise ValueError(
-                "mode: 'llm' is NOT IMPLEMENTED yet (arrives in Phase 2). "
-                "Use mode: 'vanilla' for the Phase 1 baseline honeypot. "
-                "See LIMITATIONS.md."
-            )
-        return self

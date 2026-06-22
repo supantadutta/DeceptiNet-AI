@@ -18,13 +18,18 @@ deceptinet:
     mysql: { enabled: false, listen: "0.0.0.0:3306", persona: "mysql-8-prod" }
     pop3:  { enabled: false, listen: "0.0.0.0:110",  persona: "dovecot-mailhost" }
 
-  llm:                       # Phase 2 — present for completeness; only "static" usable now
+  llm:                       # Phase 2 — used when mode: llm
     provider: "static"       # "claude" | "ollama" | "openai_compat" | "static"
-    model: "claude-sonnet-4-6"
-    max_tokens: 600
-    temperature: 0.4
+    model: "claude-sonnet-4-6"   # operator's experimental variable
+    max_tokens: 600          # small + no thinking => fast, low-latency responses
+    temperature: 0.4         # only sent to models that accept it (not opus-4-8/4-7/fable)
     timeout_s: 8
-    fallback_provider: "static"
+    fallback_provider: "static"  # used if the primary provider errors/times out
+    # For ollama / openai_compat (and self-hosted endpoints):
+    base_url: null           # e.g. "http://ollama:11434" or "http://vllm:8000/v1"
+    api_key: null            # prefer api_key_env over inlining secrets
+    api_key_env: null        # e.g. "ANTHROPIC_API_KEY" (Claude reads this by default)
+    augment_only: true       # LLM handles only commands vanilla can't (recommended)
 
   cache:                     # Phase 2
     enabled: true

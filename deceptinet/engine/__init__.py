@@ -1,9 +1,9 @@
 """Response Engine: the swappable core (spec §3).
 
-* Mode B — VANILLA (Phase 1): templated/canned responses, no LLM. Implemented.
-* Mode A — ADAPTIVE-LLM (Phase 2): pluggable LLM provider + cache + validator.
-  NOT IMPLEMENTED yet; the provider abstraction and a StaticProvider exist so
-  the plumbing is exercisable with zero LLM dependency.
+* Mode B — VANILLA (Phase 1): templated/canned responses, no LLM.
+* Mode A — ADAPTIVE-LLM (Phase 2): pluggable LLM provider + cache + output
+  validator. Augments the vanilla baseline for novel commands (see
+  ``deceptinet.engine.llm``).
 """
 
 from deceptinet.engine.base import EngineResult, ResponseEngine

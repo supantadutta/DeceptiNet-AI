@@ -180,6 +180,45 @@ async def test_probe_only_connection_is_recorded(honeypot, datastore):
         assert all(c.accepted is False for c in creds)
 
 
+async def test_llm_mode_serves_novel_command(datastore, tmp_path):
+    """SSH in llm mode: a command vanilla can't handle gets an LLM response,
+    captured with engine_mode=llm. Uses an injected fake provider (no network)."""
+    from deceptinet.engine.llm import LLMEngine
+    from tests.test_llm_engine import FakeProvider
+
+    cfg = make_test_config(
+        mode="llm",
+        containment=ContainmentConfig(egress="deny", kill_switch_file=str(tmp_path / "stop")),
+    )
+    engine = LLMEngine(FakeProvider("custom-novel-tool v1.2.3\n"))
+    hp = SSHHoneypot(
+        cfg, engine, TelemetryRecorder(datastore),
+        KillSwitch(cfg.containment.kill_switch_file),
+        host_key_dir=str(tmp_path / "hostkeys"),
+    )
+    await hp.start()
+    try:
+        async with asyncssh.connect(
+            "127.0.0.1", hp.bound_port, username="root", password="root",
+            known_hosts=None, client_keys=None,
+        ) as conn:
+            result = await conn.run("somenoveltool --version", check=False)
+            assert "custom-novel-tool v1.2.3" in result.stdout
+        await hp.drain()
+    finally:
+        await hp.stop()
+
+    with datastore.session() as s:
+        sess = s.scalars(select(Session)).first()
+        assert sess.mode == "llm"
+        ev = s.scalars(
+            select(Event).where(Event.command == "somenoveltool --version")
+        ).first()
+        assert ev is not None
+        assert ev.engine_mode == "llm"
+        assert ev.meta and ev.meta.get("responder") == "llm"
+
+
 async def test_kill_switch_refuses_connections(honeypot, datastore):
     honeypot.kill_switch.engage(reason="test")
     try:

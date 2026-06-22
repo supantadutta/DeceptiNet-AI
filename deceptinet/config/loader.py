@@ -26,6 +26,8 @@ _ENV_OVERRIDES: dict[str, tuple[str, ...]] = {
     "DECEPTINET_EXPERIMENT_ID": ("experiment_id",),
     "DECEPTINET_DATASTORE_URL": ("datastore", "url"),
     "DECEPTINET_LLM_PROVIDER": ("llm", "provider"),
+    "DECEPTINET_LLM_MODEL": ("llm", "model"),
+    "DECEPTINET_LLM_BASE_URL": ("llm", "base_url"),
     "DECEPTINET_SSH_LISTEN": ("services", "ssh", "listen"),
     "DECEPTINET_SSH_ENABLED": ("services", "ssh", "enabled"),
     "DECEPTINET_HEALTH_LISTEN": ("health", "listen"),

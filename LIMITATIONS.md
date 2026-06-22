@@ -7,11 +7,6 @@ capability does not exist yet (it is a stub), not that it is hidden.
 
 ## A. Not implemented yet (by phase) — these are explicit stubs
 
-- **LLM response engine / `mode: llm` (Phase 2).** The entire adaptive-LLM arm
-  does not exist yet. `mode: llm` is *rejected by config validation* so the
-  system cannot pretend to be an LLM honeypot. `engine/cache.py`,
-  `engine/validator.py`, and the `claude`/`ollama`/`openai_compat` providers are
-  stubs that raise `NotImplementedError`.
 - **HTTP / MySQL / POP3 services (Phase 3).** Only SSH is implemented. Enabling
   these in config emits a `NOT IMPLEMENTED` warning and the service is skipped.
 - **Session classifier (Phase 4).** Every session is stored with
@@ -32,13 +27,44 @@ capability does not exist yet (it is a stub), not that it is hidden.
 - **Reproducibility tooling / `make experiment` (Phase 7).** `make experiment`
   intentionally errors with a `NOT IMPLEMENTED` message.
 
+## A2. LLM mode (Phase 2) — implemented, with these caveats
+
+- **No LLM was actually called in CI.** All LLM-engine tests use a fake/in-memory
+  provider or `httpx.MockTransport`; the Claude provider is tested with a fake
+  SDK client. No real Claude/Ollama/OpenAI request was made in this environment.
+  Response *quality* against a live model is therefore unmeasured here.
+- **"Semantic" cache is whitespace-normalisation only**, NOT embedding-based
+  similarity. True semantic caching (embeddings + nearest-neighbour) is **not
+  implemented** — `cache.semantic: true` only collapses whitespace.
+- **Prompt-injection defence is basic.** The attacker command is isolated as the
+  user turn and the system prompt forbids breaking character; the output
+  validator catches identity/refusal/system-prompt leaks. This has **not** been
+  red-teamed against a determined jailbreaker — hardening + an explicit
+  injection test corpus is Phase 7 (spec §7).
+- **The output validator can false-positive.** It rejects (and falls back to
+  vanilla on) any output containing strings like "claude"/"openai"/"as an AI".
+  That is deliberate (ADR-015) but means some legitimate novel output is
+  suppressed.
+- **Latency/cost telemetry is captured but not yet analysed.** Per-event
+  `latency_ms`, `cache_hit`, and token counts are stored; the RQ3 cost/latency
+  analysis itself is Phase 5.
+- **Pre-warming costs tokens.** When `mode: llm`, `cache.prewarm: true`, and a
+  real provider is configured, the runner pre-warms a small default command set
+  at boot with real LLM calls. Disable with `cache.prewarm: false`.
+- **Egress vs. remote LLM:** under the default-deny Docker network, remote
+  providers (Claude API) are unreachable. Use a local provider on the internal
+  network (`docker-compose.llm.yml`) or run bare-metal. `allow_llm_only` egress
+  is not implemented (ADR-014).
+
 ## B. Verified vs. NOT verified in this build environment
 
 - ✅ **Application verified end-to-end without Docker.** `python -m deceptinet`
   was run as a real process; a real SSH client connected, authenticated, drove
   an interactive shell, and the full session (credentials, per-command events,
   timestamps, persisted virtual-FS state) was captured to the datastore. The
-  `/health` and `/stats` endpoints responded. 45 tests pass.
+  `/health` and `/stats` endpoints responded. 80 tests pass (including the
+  Phase 2 LLM engine, cache, validator, and providers — all with fakes/mocks,
+  no live LLM).
 - ⚠️ **`docker compose up` was NOT executed here.** The build environment's
   network policy blocks the Docker registry (Docker Hub CDN returns HTTP 403),
   so the `python:3.11-slim` base image could not be pulled and no image could be
@@ -72,10 +98,11 @@ capability does not exist yet (it is a stub), not that it is hidden.
 
 ## D. SSH emulation fidelity (Phase 1)
 
-- **Latency:** the vanilla engine responds in well under a millisecond. That is
-  realistic for a real host, but it means the cache/jitter machinery (spec §2.2)
-  is irrelevant until the LLM arm exists; latency-based fingerprinting is a
-  Phase 2 concern, measured then.
+- **Latency:** the vanilla engine responds in well under a millisecond. The LLM
+  arm adds 1–8s for cache *misses*; the cache makes hits instant (spec §2.2).
+  Latency injection/jitter on cached responses (`latency.inject_jitter_on_cache`)
+  is **not yet implemented** — the config flag exists but is inert. Systematic
+  latency-fingerprinting analysis is Phase 5.
 - **Shell features:** the asyncssh line editor provides cursor movement,
   history, and backspace, but **not** shell tab-completion of filenames. There
   is no job control, no signals beyond Ctrl-C handling, and no background jobs.

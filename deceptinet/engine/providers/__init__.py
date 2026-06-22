@@ -1,29 +1,58 @@
 """Pluggable LLM provider abstraction (spec §3).
 
-Phase 0/1 ships the interface plus a dependency-free :class:`StaticProvider`
-so the LLM plumbing is exercisable with zero LLM dependency. The Claude /
-Ollama / OpenAI-compatible providers are Phase 2 and currently raise
-``NotImplementedError`` if instantiated/used (see LIMITATIONS.md).
+Phase 2 implements Claude (official SDK), Ollama, and OpenAI-compatible
+providers, plus the dependency-free StaticProvider (also the default
+``fallback_provider``). The provider is selected by ``llm.provider`` in config.
 """
 
-from deceptinet.engine.providers.base import LLMProvider, PromptContext
+from deceptinet.engine.providers.base import (
+    LLMProvider,
+    ProviderError,
+    ProviderResult,
+    PromptContext,
+)
 from deceptinet.engine.providers.static import StaticProvider
 
-__all__ = ["LLMProvider", "PromptContext", "StaticProvider", "get_provider"]
+__all__ = [
+    "LLMProvider",
+    "PromptContext",
+    "ProviderResult",
+    "ProviderError",
+    "StaticProvider",
+    "get_provider",
+    "build_provider",
+]
 
 
-def get_provider(name: str, **kwargs):
-    """Factory for LLM providers. Only ``static`` is usable in Phase 1."""
+def get_provider(name: str, **kwargs) -> LLMProvider:
+    """Construct a provider by name with explicit kwargs."""
     if name == "static":
-        return StaticProvider(**kwargs)
-    if name in ("claude", "ollama", "openai_compat"):
-        # Imported lazily so missing optional SDKs don't break import of the
-        # package; each raises a clear NOT IMPLEMENTED error when used.
-        from deceptinet.engine.providers import claude, ollama, openai_compat
+        # StaticProvider only accepts canned_text; drop connection kwargs.
+        return StaticProvider(**{k: v for k, v in kwargs.items() if k == "canned_text"})
+    if name == "claude":
+        from deceptinet.engine.providers.claude import ClaudeProvider
 
-        return {
-            "claude": claude.ClaudeProvider,
-            "ollama": ollama.OllamaProvider,
-            "openai_compat": openai_compat.OpenAICompatProvider,
-        }[name](**kwargs)
+        return ClaudeProvider(**kwargs)
+    if name == "ollama":
+        from deceptinet.engine.providers.ollama import OllamaProvider
+
+        return OllamaProvider(**kwargs)
+    if name == "openai_compat":
+        from deceptinet.engine.providers.openai_compat import OpenAICompatProvider
+
+        return OpenAICompatProvider(**kwargs)
     raise ValueError(f"unknown LLM provider: {name!r}")
+
+
+def build_provider(name: str, llm_config) -> LLMProvider:
+    """Build a provider from an :class:`~deceptinet.config.models.LLMConfig`."""
+    return get_provider(
+        name,
+        model=llm_config.model,
+        max_tokens=llm_config.max_tokens,
+        temperature=llm_config.temperature,
+        timeout_s=llm_config.timeout_s,
+        base_url=llm_config.base_url,
+        api_key=llm_config.api_key,
+        api_key_env=llm_config.api_key_env,
+    )

@@ -67,7 +67,34 @@ class Application:
         if self.config.health.enabled:
             await self._start_health()
 
+        self._maybe_prewarm()
         self._tasks.append(asyncio.create_task(self._watch_kill_switch()))
+
+    def _maybe_prewarm(self) -> None:
+        """Pre-warm the LLM cache in the background (spec §2.2), if configured.
+
+        Skipped for vanilla mode and the static provider. Makes real LLM calls,
+        so it is gated behind cache.prewarm and logs a cost note.
+        """
+        if self.config.mode != "llm" or not self.config.cache.prewarm:
+            return
+        from deceptinet.engine.llm import DEFAULT_PREWARM_COMMANDS, LLMEngine
+
+        if not isinstance(self.engine, LLMEngine) or self.engine.provider.name == "static":
+            return
+
+        async def _run() -> None:
+            from deceptinet.session.state import build_session_state
+
+            state = build_session_state(self.config.services.ssh.persona, "root")
+            _log.warning(
+                "pre-warming LLM cache (consumes tokens)",
+                extra={"commands": len(DEFAULT_PREWARM_COMMANDS), "event": "prewarm_start"},
+            )
+            n = await self.engine.prewarm(DEFAULT_PREWARM_COMMANDS, state)
+            _log.info("pre-warm complete", extra={"cached": n, "event": "prewarm_done"})
+
+        self._tasks.append(asyncio.create_task(_run()))
 
     def _warn_unimplemented_services(self) -> None:
         for name in _PHASE3_SERVICES:

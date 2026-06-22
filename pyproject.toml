@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deceptinet-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "Adaptive LLM-Based Honeypot for Threat Intelligence Collection (thesis research instrument)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +18,8 @@ dependencies = [
     "fastapi==0.115.5",
     "uvicorn==0.32.1",
     "psycopg2-binary==2.9.10",
+    "anthropic==0.40.0",
+    "httpx==0.27.2",
 ]
 
 [project.optional-dependencies]

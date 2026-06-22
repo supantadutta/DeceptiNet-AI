@@ -12,11 +12,12 @@ conditions.
 
 ---
 
-## Build status — Phases 0 & 1 complete
+## Build status — Phases 0, 1 & 2 complete
 
-This repository currently implements **Phase 0 (scaffolding & guardrails)** and
-**Phase 1 (SSH service, vanilla mode, end-to-end)**. Later phases are present
-only as honest stubs that raise/inform `NOT IMPLEMENTED`.
+This repository implements **Phase 0 (scaffolding & guardrails)**, **Phase 1
+(SSH service, vanilla mode, end-to-end)**, and **Phase 2 (adaptive LLM response
+engine)**. Later phases are present only as honest stubs that raise/inform
+`NOT IMPLEMENTED`.
 
 | Capability | Status |
 |---|---|
@@ -25,16 +26,17 @@ only as honest stubs that raise/inform `NOT IMPLEMENTED`.
 | Containment: kill switch + egress posture | ✅ implemented (egress enforced by Docker; see caveats) |
 | Datastore (SQLite / Postgres) + telemetry capture | ✅ implemented |
 | SSH honeypot, **vanilla** mode (banner, auth capture, PTY shell, virtual FS) | ✅ implemented |
-| `LLMProvider` interface + `StaticProvider` | ✅ implemented |
+| **LLM** response engine (mode `llm`): providers + cache + leak guard | ✅ Phase 2 |
+| LLM providers: Claude (SDK), Ollama, OpenAI-compatible, static | ✅ Phase 2 |
 | Health endpoint | ✅ implemented |
-| **LLM** response engine (mode `llm`) | ⛔ Phase 2 (NOT IMPLEMENTED) |
 | HTTP / MySQL / POP3 services | ⛔ Phase 3 (NOT IMPLEMENTED) |
 | Session classifier / IOC / ATT&CK mapping | ⛔ Phase 4 (NOT IMPLEMENTED) |
 | Comparison harness + statistics + figures | ⛔ Phase 5 (NOT IMPLEMENTED) |
 | Full dashboard UI | ⛔ Phase 6 (minimal health/stats only) |
 
-See [`LIMITATIONS.md`](LIMITATIONS.md) for the honest, detailed list (including
-what was and wasn't verified in CI).
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the component diagram and
+[`LIMITATIONS.md`](LIMITATIONS.md) for the honest, detailed gap list (including
+what was and wasn't verified in CI — notably, no live LLM was called).
 
 ---
 
@@ -123,9 +125,29 @@ deceptinet:
   mode: "vanilla"   # Phase 1: the baseline.  "llm" arrives in Phase 2.
 ```
 
-`mode` and `llm.provider` are what let Phase 5 run the A/B comparison. In Phase
-1, `mode: llm` is intentionally rejected by config validation so the system
-never *pretends* to be the LLM it doesn't yet have.
+`mode` and `llm.provider` are what let Phase 5 run the A/B comparison.
+
+### Enabling LLM mode (Phase 2)
+
+In `llm` mode the LLM only handles commands the vanilla engine can't (the novel
+long tail); known commands stay deterministic so session state is consistent
+(see [`METHODOLOGY.md`](METHODOLOGY.md)).
+
+```bash
+# Local, containment-friendly: a local LLM on the internal network (no egress).
+#   provider: ollama, base_url: http://localhost:11434
+DECEPTINET_MODE=llm DECEPTINET_LLM_PROVIDER=ollama make run-local
+
+# Claude API (requires outbound egress to api.anthropic.com — not available
+# inside the default-deny Docker network; run bare-metal or use Ollama):
+export ANTHROPIC_API_KEY=sk-ant-...
+DECEPTINET_MODE=llm DECEPTINET_LLM_PROVIDER=claude make run-local
+```
+
+If no real provider/key is configured, `llm` mode safely degrades to the vanilla
+baseline for novel commands (it never emits fake "static-provider" text to the
+attacker). The output **leak guard** drops any response that breaks character
+and falls back to the template.
 
 ---
 

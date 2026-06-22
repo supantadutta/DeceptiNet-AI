@@ -30,6 +30,12 @@ class PromptContext:
     extra: dict = field(default_factory=dict)
 
 
+class ProviderError(RuntimeError):
+    """Raised when a provider call fails (timeout, API/transport error) so the
+    engine can fall back to the configured fallback provider or, ultimately, the
+    vanilla template. Providers should wrap their backend's exceptions in this."""
+
+
 @dataclass
 class ProviderResult:
     text: str

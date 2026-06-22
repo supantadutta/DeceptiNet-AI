@@ -2,6 +2,41 @@
 
 All notable changes to DeceptiNet-AI. Format loosely follows Keep a Changelog.
 
+## [0.2.0] — Phase 2 (adaptive LLM response engine)
+
+### Added
+- **`LLMEngine`** (`mode: llm`): augments the vanilla baseline — known commands
+  stay deterministic (consistent FS state), the novel long tail is routed to an
+  LLM. Path: cache → provider (+ fallback) → output validator → cache, with an
+  honest vanilla `command not found` fallback on any failure/leak.
+- **Providers:** Claude (official `anthropic` async SDK, with a sampling-param
+  guard for Opus 4.8/4.7/Fable 5), Ollama and OpenAI-compatible (`httpx`), plus
+  the existing `static`. Selected by `llm.provider`; `fallback_provider` honoured.
+- **Response cache** (exact + whitespace-normalised) for instant cache hits;
+  optional background **pre-warming** at boot (gated, logs token cost).
+- **Output validator / leak guard:** strips markdown fences, rejects
+  assistant-identity / refusal / system-prompt leaks (biased to false positives).
+- **Prompt builder** with persona facts + live session summary; attacker input
+  isolated as untrusted data (basic prompt-injection defence).
+- `docker-compose.llm.yml` override adding a local **Ollama** service on the
+  `internal` network (containment-preserving LLM; no internet egress).
+- `ARCHITECTURE.md`.
+
+### Changed
+- Config: `mode: llm` is now accepted (Phase-1 guard removed); added
+  `llm.base_url`, `llm.api_key`, `llm.api_key_env`, `llm.augment_only`.
+- Telemetry now records `engine_mode`, `cache_hit`, and LLM token counts.
+
+### Tests
+- 80 passing (Phase 2 adds LLM engine, cache, validator, prompt builder,
+  provider request/parse, and an SSH-in-llm-mode integration test — all with
+  fakes/mocks; no live LLM call in CI).
+
+### Notes / limitations
+- No live LLM was called in CI; "semantic" cache is normalisation-only; prompt
+  -injection defence is basic (Phase 7 hardens it); remote providers are
+  unreachable under default-deny egress (use local Ollama). See LIMITATIONS.md.
+
 ## [0.1.0] — Phases 0 & 1
 
 ### Added — Phase 0 (scaffolding & guardrails)

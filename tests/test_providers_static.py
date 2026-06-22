@@ -34,8 +34,15 @@ def test_get_provider_unknown_raises():
         get_provider("does-not-exist")
 
 
-@pytest.mark.parametrize("name", ["claude", "ollama", "openai_compat"])
-def test_phase2_providers_not_implemented(name):
-    # They exist in the registry but must fail loud, not silently degrade.
-    with pytest.raises(NotImplementedError):
-        get_provider(name)
+def test_phase2_providers_construct():
+    # Phase 2: these providers are implemented. Construction must not touch the
+    # network (that happens on generate()).
+    from deceptinet.engine.providers.claude import ClaudeProvider
+    from deceptinet.engine.providers.ollama import OllamaProvider
+    from deceptinet.engine.providers.openai_compat import OpenAICompatProvider
+
+    assert isinstance(get_provider("claude", api_key="test"), ClaudeProvider)
+    assert isinstance(get_provider("ollama", base_url="http://x:11434"), OllamaProvider)
+    assert isinstance(
+        get_provider("openai_compat", base_url="http://x/v1"), OpenAICompatProvider
+    )
