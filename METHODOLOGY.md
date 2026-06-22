@@ -41,13 +41,26 @@ as "LLM augmentation vs. template baseline," and headline metrics must still be
 **segmented by session classification** (Phase 4) to avoid the bot-vs-human
 confound (spec §2.1).
 
+## Human-vs-bot classification (Phase 4 — implemented; calibration pending)
+
+The classifier (`telemetry/classifier.py`) labels sessions
+`automated | semi_interactive | human_like | unknown` with a confidence score,
+from separate **automation evidence** (scanner/library fingerprints, no-PTY exec,
+machine-fast or highly-regular timing, fixed bot-script patterns) and **human
+evidence** (interactive PTY, human-paced or irregular timing). A definitive
+scanner fingerprint is treated as conclusive; absence of signal yields `unknown`
+(not a confident "human"). Every verdict carries human-readable `reasons`, and
+`analysis/intel.py` writes the label/confidence back to each session.
+
+**Calibration is pending and is the key threat to RQ1.** The weights/cutoffs are
+reasoned defaults, not validated against a labelled corpus. Before citing any
+RQ1 result: (a) tune thresholds against hand-labelled sessions, (b) report a
+confidence distribution alongside labels, and (c) segment **all** headline
+engagement metrics by classification (spec §2.1). Keystroke-level interactivity
+(tab/arrow keys) is not captured — interactivity is inferred from PTY + timing.
+
 ## To be written (do not cite as done)
 
-- **Human-vs-bot classification (Phase 4):** feature definitions (inter-command
-  timing entropy, sequence predictability, interactive-feature use, TTY, bot
-  fingerprints), the confidence model, and validation. RQ1 is not answerable
-  until this exists, and all headline metrics will be **segmented by
-  classification**.
 - **Experiment designs (Phase 5):** both (a) parallel A/B and (b)
   time-interleaved, with their trade-offs.
 - **Metrics & statistics (Phase 5):** engagement, intelligence, and cost/latency

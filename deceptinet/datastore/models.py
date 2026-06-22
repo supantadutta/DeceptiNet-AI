@@ -135,4 +135,29 @@ class Event(Base):
     session: Mapped["Session"] = relationship(back_populates="events")
 
 
+class IOC(Base):
+    """An indicator of compromise extracted from a session (Phase 4)."""
+
+    __tablename__ = "iocs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), index=True)
+    ioc_type: Mapped[str] = mapped_column(String(32), index=True)  # ipv4/url/sha256/...
+    value: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[_dt.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class Technique(Base):
+    """A MITRE ATT&CK technique observed in a session (Phase 4)."""
+
+    __tablename__ = "techniques"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), index=True)
+    technique_id: Mapped[str] = mapped_column(String(16), index=True)  # e.g. T1059
+    name: Mapped[str] = mapped_column(String(128))
+    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[_dt.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 Index("ix_events_session_seq", Event.session_id, Event.seq)

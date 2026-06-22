@@ -78,8 +78,9 @@ exists. See `LIMITATIONS.md` for the honest gap list.
 | LLM engine (SSH) + shared augmentor (HTTP/MySQL/POP3) | `engine/llm.py`, `augment.py`, `cache.py`, `validator.py`, `providers/`, `prompts/` | ✅ Phase 2–3 |
 | Session state + virtual FS + personas | `session/` | ✅ |
 | Telemetry recorder | `telemetry/recorder.py` | ✅ |
-| Classifier / IOC / ATT&CK mapper | `telemetry/{classifier,ioc,attack_map}.py` | ⛔ Phase 4 |
-| Datastore (models + engine) | `datastore/` | ✅ |
+| Classifier / IOC / ATT&CK mapper | `telemetry/{classifier,ioc,attack_map}.py` | ✅ Phase 4 |
+| Intel report (classification + IOC + ATT&CK) | `analysis/intel.py` | ✅ Phase 4 |
+| Datastore (models + engine; +iocs/techniques) | `datastore/` | ✅ |
 | Dashboard (health/stats) | `dashboard/` | ✅ minimal (full UI Phase 6) |
 | Comparison harness + stats + figures | `analysis/` | ⛔ Phase 5 |
 | Runner / process orchestration | `runner.py`, `__main__.py` | ✅ |

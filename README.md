@@ -15,8 +15,9 @@ conditions.
 ## Build status — Phases 0–3 complete
 
 This repository implements **Phase 0** (scaffolding & guardrails), **Phase 1**
-(SSH, vanilla), **Phase 2** (adaptive LLM response engine), and **Phase 3**
-(HTTP, MySQL, POP3 — both modes). Later phases are present only as honest stubs.
+(SSH, vanilla), **Phase 2** (adaptive LLM response engine), **Phase 3** (HTTP,
+MySQL, POP3 — both modes), and **Phase 4** (session classification + IOC /
+MITRE ATT&CK intel). Later phases are present only as honest stubs.
 
 | Capability | Status |
 |---|---|
@@ -31,7 +32,8 @@ This repository implements **Phase 0** (scaffolding & guardrails), **Phase 1**
 | **LLM** response engine + cache + leak guard (all services) | ✅ Phase 2 |
 | LLM providers: Claude (SDK), Ollama, OpenAI-compatible, static | ✅ Phase 2 |
 | Health endpoint | ✅ implemented |
-| Session classifier / IOC / ATT&CK mapping | ⛔ Phase 4 (NOT IMPLEMENTED) |
+| Session classifier (automated/human-like/…) + confidence | ✅ Phase 4 |
+| IOC extractor + MITRE ATT&CK mapper + intel report | ✅ Phase 4 |
 | Comparison harness + statistics + figures | ⛔ Phase 5 (NOT IMPLEMENTED) |
 | Full dashboard UI | ⛔ Phase 6 (minimal health/stats only) |
 
@@ -179,6 +181,60 @@ deceptinet/
   analysis/       comparison harness (Phase 5 stub)
 tests/            pytest suite
 scripts/          show_sessions.py (read-only datastore inspector)
+```
+
+## Architecture (overview)
+
+Full diagram, component status, and request lifecycle: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+```
+  Attacker / scanner
+        │  SSH :2222   HTTP :8080   MySQL :3306   POP3 :1100
+        ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │ Protocol Emulation Layer        deceptinet/services/          │
+  │  ssh · http · mysql · pop3  — parse input, NEVER execute      │
+  └──────────────────────────────────────────────────────────────┘
+        │  request + SessionState
+        ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │ Response Engine (the A/B switch)        deceptinet/engine/     │
+  │  mode=vanilla → templated (Cowrie-style)                      │
+  │  mode=llm     → vanilla for known + LLM for novel:            │
+  │                 cache → provider(+fallback) → leak-guard       │
+  │  providers: claude | ollama | openai_compat | static          │
+  └──────────────────────────────────────────────────────────────┘
+        │  EngineResult (output, latency, tokens, cache_hit)
+        ▼
+  ┌───────────────────────────┐   ┌──────────────────────────────┐
+  │ Session State + virtual FS │   │ Telemetry capture (off-loop)  │
+  │ deceptinet/session/        │   │ deceptinet/telemetry/         │
+  └───────────────────────────┘   └──────────────┬───────────────┘
+                                                  ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │ Datastore  (SQLite / Postgres)   deceptinet/datastore/        │
+  │  sessions · credentials · events · iocs · techniques          │
+  └──────────────────────────────────────────────────────────────┘
+        │
+        ▼
+  ┌───────────────────────────┐   ┌──────────────────────────────┐
+  │ Analysis  deceptinet/      │   │ Dashboard / API               │
+  │ analysis/ (intel: class-   │   │ deceptinet/dashboard/         │
+  │ ification + IOC + ATT&CK;  │   │  /health, /stats              │
+  │ comparison harness=Phase 5)│   │  (full UI = Phase 6)          │
+  └───────────────────────────┘   └──────────────────────────────┘
+
+  Containment (deceptinet/containment/): kill switch + default-deny egress
+  Config (deceptinet/config/): single source of truth (config.yaml)
+```
+
+## Generate an intelligence report
+
+After capturing sessions, classify them and extract IOCs + ATT&CK techniques:
+
+```bash
+python scripts/analyze.py --all            # JSON reports; also persists results
+python scripts/analyze.py --session <id>   # one session
 ```
 
 ## Documentation

@@ -2,6 +2,35 @@
 
 All notable changes to DeceptiNet-AI. Format loosely follows Keep a Changelog.
 
+## [0.4.0] — Phase 4 (classification + IOC + MITRE ATT&CK intel)
+
+### Added
+- **Session classifier** (`telemetry/classifier.py`): labels sessions
+  `automated | semi_interactive | human_like | unknown` with a confidence score
+  from separate automation/human evidence (fingerprints, PTY allocation, timing
+  entropy/pace, bot-script patterns). A definitive scanner fingerprint dominates;
+  low-signal sessions are honestly `unknown`, not confidently human. Transparent
+  thresholds + human-readable `reasons` on every verdict.
+- **IOC extractor** (`telemetry/ioc.py`): IPv4/IPv6, URLs, domains (URL hosts +
+  TLD allowlist), md5/sha1/sha256, BTC/ETH wallets, payload-download URLs, and
+  credentials tried.
+- **MITRE ATT&CK mapper** (`telemetry/attack_map.py`): rules table mapping
+  observed behaviour to techniques (T1110, T1059, T1083, T1105, T1190, T1496, …)
+  with evidence.
+- **Intel report** (`analysis/intel.py`): combines the three into a structured
+  JSON report per session and (optionally) persists results — classification onto
+  the session, IOCs/techniques into new `iocs` / `techniques` tables. Idempotent.
+- `scripts/analyze.py` CLI (`--session` / `--all`). README architecture view.
+
+### Tests
+- 102 passing (adds classifier, IOC, ATT&CK, and an end-to-end capture→analyze→
+  persist intel test). All deterministic; no network.
+
+### Notes / limitations
+- Classifier thresholds are reasoned defaults, **not empirically calibrated**;
+  classification runs post-hoc (not live); IOC extraction is recall-biased; the
+  ATT&CK mapper is a heuristic indicator mapper. See LIMITATIONS.md §A4.
+
 ## [0.3.0] — Phase 3 (HTTP, MySQL, POP3 services — both modes)
 
 ### Added

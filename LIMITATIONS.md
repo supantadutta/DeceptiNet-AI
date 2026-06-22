@@ -7,16 +7,6 @@ capability does not exist yet (it is a stub), not that it is hidden.
 
 ## A. Not implemented yet (by phase) — these are explicit stubs
 
-- **Session classifier (Phase 4).** Every session is stored with
-  `session_classification = "unknown"`. **This is the single biggest caveat for
-  the research question:** until the classifier exists, engagement cannot be
-  segmented into automated vs. human-like, and raw session-length comparisons
-  would mostly measure bot timeout behaviour (spec §2.1). Raw timing data *is*
-  being captured now (per-event timestamps, credential attempt times) so the
-  classifier can run retrospectively.
-- **IOC extractor & MITRE ATT&CK mapper (Phase 4).** Not implemented. Raw
-  commands/credentials are captured verbatim, so no intel is lost — extraction
-  is deferred, not skipped.
 - **Comparison harness + statistics + figures (Phase 5).** Not implemented.
   There are **no results, no benchmark numbers, and no figures** in this repo,
   and none will be fabricated.
@@ -76,6 +66,30 @@ capability does not exist yet (it is a stub), not that it is hidden.
 - **All three services in `llm` mode** share the same provider/cache/leak-guard
   core as SSH (`engine/augment.py`); the same "no live LLM in CI" caveat applies.
 
+## A4. Classification + intel extraction (Phase 4) — implemented, with these caveats
+
+- **Classifier thresholds are reasoned, NOT empirically calibrated.** The
+  automation/human evidence weights and timing cutoffs in
+  `telemetry/classifier.py` are defaults to be validated/tuned against a
+  labelled corpus in the analysis phase. They are a starting point, not ground
+  truth — **this is the single biggest caveat for RQ1.** Treat low-confidence
+  verdicts (and `unknown`) accordingly; report metrics segmented by
+  classification *with* the confidence distribution.
+- **Classification runs post-hoc, not live.** Sessions are stored with
+  `session_classification = "unknown"` until `scripts/analyze.py` (or the Phase 5
+  harness) runs; analysis then writes the label/confidence back. Timing fidelity
+  is preserved (per-event capture timestamps), so retrospective analysis is sound.
+- **Limited interactivity signals.** The SSH line editor abstracts away
+  keystroke-level signals (tab-completion, arrow keys), so interactivity is
+  inferred mainly from PTY allocation and timing — weaker than full keystroke
+  analysis (spec §2.1). Documented as future work.
+- **IOC extraction is recall-biased and noisy.** Domain extraction uses a
+  curated common-TLD allowlist to cut false positives, but command text can
+  still yield spurious indicators; treat IOCs as leads, not verified artifacts.
+- **The ATT&CK mapper is a heuristic indicator mapper**, not a validated
+  detection engine — coverage is a curated rules table (a subset of techniques)
+  and false positives/negatives are expected.
+
 ## B. Verified vs. NOT verified in this build environment
 
 - ✅ **Application verified end-to-end without Docker.** `python -m deceptinet`
@@ -83,9 +97,10 @@ capability does not exist yet (it is a stub), not that it is hidden.
   an interactive shell, and the full session (credentials, per-command events,
   timestamps, persisted virtual-FS state) was captured to the datastore. The
   `/health` and `/stats` endpoints responded. All four services were also run
-  together as a real process and captured HTTP/MySQL/POP3 interactions. 87 tests
-  pass (incl. the Phase 2 LLM engine and Phase 3 HTTP/MySQL/POP3 adapters — all
-  with fakes/mocks, no live LLM).
+  together as a real process and captured HTTP/MySQL/POP3 interactions; the
+  Phase 4 analyzer produced real intel reports over that capture. 102 tests pass
+  (incl. the LLM engine, the four protocol adapters, and the classifier / IOC /
+  ATT&CK / intel pipeline — all with fakes/mocks, no live LLM).
 - ⚠️ **`docker compose up` was NOT executed here.** The build environment's
   network policy blocks the Docker registry (Docker Hub CDN returns HTTP 403),
   so the `python:3.11-slim` base image could not be pulled and no image could be

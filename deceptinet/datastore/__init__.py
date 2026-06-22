@@ -6,6 +6,9 @@ what the Phase 5 comparison harness will depend on.
 """
 
 from deceptinet.datastore.db import Datastore, make_datastore
-from deceptinet.datastore.models import Base, Credential, Event, Session
+from deceptinet.datastore.models import Base, Credential, Event, IOC, Session, Technique
 
-__all__ = ["Datastore", "make_datastore", "Base", "Session", "Event", "Credential"]
+__all__ = [
+    "Datastore", "make_datastore", "Base", "Session", "Event", "Credential",
+    "IOC", "Technique",
+]

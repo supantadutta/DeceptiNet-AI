@@ -1,11 +1,14 @@
-"""Analysis & comparison harness — NOT IMPLEMENTED (Phase 5, the thesis core).
+"""Analysis & comparison harness.
 
-Will compute engagement + intelligence + cost/latency metrics per mode,
-segmented by session classification, with proper significance tests
-(Mann-Whitney U for heavy-tailed session-length data), effect sizes, and CIs,
-and emit thesis-ready figures/tables (spec §5 Phase 5). Nothing here fabricates
-numbers; it will only ever read real rows from the datastore. See
-LIMITATIONS.md and (eventually) METHODOLOGY.md.
+Phase 4 (implemented): per-session intelligence reports — classification, IOCs,
+and MITRE ATT&CK techniques (``intel.py``).
+
+Phase 5 (NOT IMPLEMENTED): the LLM-vs-vanilla comparison harness — engagement /
+intelligence / cost metrics per mode, segmented by classification, with proper
+significance tests and thesis-ready figures/tables. Nothing here fabricates
+numbers; it will only ever read real rows from the datastore.
 """
 
-__all__: list[str] = []
+from deceptinet.analysis.intel import analyze_all, analyze_session
+
+__all__ = ["analyze_session", "analyze_all"]
