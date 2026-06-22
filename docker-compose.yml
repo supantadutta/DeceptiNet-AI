@@ -43,6 +43,9 @@ services:
     ports:
       - "2222:2222"   # SSH honeypot (map host 22 -> 2222 in production; see README)
       - "8000:8000"   # read-only health/dashboard endpoint
+      - "8080:8080"   # HTTP honeypot (map host 80 -> 8080 in production)
+      - "3306:3306"   # MySQL honeypot
+      - "1100:1100"   # POP3 honeypot (map host 110 -> 1100 in production)
     volumes:
       - hostkeys:/data
     networks:

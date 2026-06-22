@@ -1,10 +1,9 @@
 """Application runner: start listeners + health server, honour the kill switch.
 
-This is the process entry point's workhorse. It is deliberately conservative:
-only *implemented* services are started, enabled-but-unimplemented services emit
-a loud NOT IMPLEMENTED warning rather than silently doing nothing, and the kill
-switch is watched continuously so an operator can stop (and resume) all exposed
-listeners at runtime.
+This is the process entry point's workhorse. It starts every enabled, implemented
+service (SSH/HTTP/MySQL/POP3), serves the health endpoint, and watches the kill
+switch continuously so an operator can stop (and resume) all exposed listeners at
+runtime.
 """
 
 from __future__ import annotations
@@ -19,15 +18,15 @@ from deceptinet.config.models import Config
 from deceptinet.containment.killswitch import KillSwitch
 from deceptinet.dashboard.app import create_app
 from deceptinet.datastore.db import Datastore, make_datastore
-from deceptinet.engine.factory import get_engine
+from deceptinet.engine.factory import build_augmentor, get_engine
 from deceptinet.logging_setup import get_logger
+from deceptinet.services.http.server import HTTPHoneypot
+from deceptinet.services.mysql.server import MySQLHoneypot
+from deceptinet.services.pop3.server import POP3Honeypot
 from deceptinet.services.ssh.server import SSHHoneypot
 from deceptinet.telemetry.recorder import TelemetryRecorder
 
 _log = get_logger("deceptinet.runner")
-
-# Services that exist in config but are not implemented until Phase 3.
-_PHASE3_SERVICES = ("http", "mysql", "pop3")
 
 
 class _QuietUvicornServer(uvicorn.Server):
@@ -44,8 +43,9 @@ class Application:
         self.kill_switch = KillSwitch(config.containment.kill_switch_file)
         self.datastore = datastore or make_datastore(config.datastore.url)
         self.recorder = TelemetryRecorder(self.datastore)
-        self.engine = get_engine(config)
-        self.ssh: SSHHoneypot | None = None
+        self.engine = get_engine(config)            # SSH response engine
+        self.augmentor = build_augmentor(config)    # shared LLM core for HTTP/MySQL/POP3 (None if vanilla)
+        self._services: list = []
         self._uvicorn: _QuietUvicornServer | None = None
         self._tasks: list[asyncio.Task] = []
         self._stop = asyncio.Event()
@@ -54,11 +54,10 @@ class Application:
     # ---- lifecycle ----------------------------------------------------
     async def start(self) -> None:
         self.datastore.create_all()
-        self._warn_unimplemented_services()
 
-        if self.config.services.ssh.enabled and not self.kill_switch.is_engaged():
-            await self._start_ssh()
-        elif self.kill_switch.is_engaged():
+        if not self.kill_switch.is_engaged():
+            await self._start_services()
+        else:
             _log.warning(
                 "kill switch engaged at boot; listeners not started",
                 extra={"event": "killswitch_boot"},
@@ -96,25 +95,34 @@ class Application:
 
         self._tasks.append(asyncio.create_task(_run()))
 
-    def _warn_unimplemented_services(self) -> None:
-        for name in _PHASE3_SERVICES:
-            svc = getattr(self.config.services, name)
-            if svc.enabled:
-                _log.warning(
-                    "service enabled but NOT IMPLEMENTED (Phase 3); skipping",
-                    extra={"service": name, "listen": svc.listen,
-                           "event": "service_not_implemented"},
-                )
+    def _build_services(self) -> list:
+        svc = self.config.services
+        services: list = []
+        if svc.ssh.enabled:
+            services.append(
+                SSHHoneypot(self.config, self.engine, self.recorder, self.kill_switch,
+                            host_key_dir=self._host_key_dir)
+            )
+        if svc.http.enabled:
+            services.append(HTTPHoneypot(self.config, self.recorder, self.kill_switch,
+                                         augmentor=self.augmentor))
+        if svc.mysql.enabled:
+            services.append(MySQLHoneypot(self.config, self.recorder, self.kill_switch,
+                                          augmentor=self.augmentor))
+        if svc.pop3.enabled:
+            services.append(POP3Honeypot(self.config, self.recorder, self.kill_switch,
+                                         augmentor=self.augmentor))
+        return services
 
-    async def _start_ssh(self) -> None:
-        self.ssh = SSHHoneypot(
-            self.config,
-            self.engine,
-            self.recorder,
-            self.kill_switch,
-            host_key_dir=self._host_key_dir,
-        )
-        await self.ssh.start()
+    async def _start_services(self) -> None:
+        self._services = self._build_services()
+        for s in self._services:
+            await s.start()
+
+    async def _stop_services(self) -> None:
+        for s in self._services:
+            await s.stop()
+        self._services = []
 
     async def _start_health(self) -> None:
         app = create_app(self.config, self.kill_switch, self.datastore)
@@ -136,20 +144,14 @@ class Application:
         engaged_prev = self.kill_switch.is_engaged()
         while not self._stop.is_set():
             engaged = self.kill_switch.is_engaged()
-            if engaged and not engaged_prev and self.ssh is not None:
+            if engaged and not engaged_prev and self._services:
                 _log.warning("kill switch engaged: stopping listeners",
                              extra={"event": "killswitch_stop"})
-                await self.ssh.stop()
-                self.ssh = None
-            elif (
-                not engaged
-                and engaged_prev
-                and self.ssh is None
-                and self.config.services.ssh.enabled
-            ):
+                await self._stop_services()
+            elif not engaged and engaged_prev and not self._services:
                 _log.warning("kill switch released: resuming listeners",
                              extra={"event": "killswitch_resume"})
-                await self._start_ssh()
+                await self._start_services()
             engaged_prev = engaged
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=1.0)
@@ -172,9 +174,9 @@ class Application:
     async def shutdown(self) -> None:
         _log.info("shutting down", extra={"event": "shutdown"})
         self._stop.set()
-        if self.ssh is not None:
-            await self.ssh.stop()
-            self.ssh = None
+        await self._stop_services()
+        if self.augmentor is not None:
+            await self.augmentor.aclose()
         if self._uvicorn is not None:
             self._uvicorn.should_exit = True
         for task in self._tasks:

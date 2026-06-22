@@ -12,11 +12,11 @@ deceptinet:
 
   services:
     ssh:   { enabled: true,  listen: "0.0.0.0:2222", persona: "ubuntu-22.04-webserver" }
-    # The services below are defined for Phase 3. They are disabled now because
-    # enabling an unimplemented service would be dishonest, not functional.
-    http:  { enabled: false, listen: "0.0.0.0:8080", persona: "nginx-php-shop" }
-    mysql: { enabled: false, listen: "0.0.0.0:3306", persona: "mysql-8-prod" }
-    pop3:  { enabled: false, listen: "0.0.0.0:110",  persona: "dovecot-mailhost" }
+    http:  { enabled: true,  listen: "0.0.0.0:8080", persona: "nginx-php-shop" }
+    mysql: { enabled: true,  listen: "0.0.0.0:3306", persona: "mysql-8-prod" }
+    # POP3 on a high port so it binds as the non-root container user; map host
+    # 110 -> 1100 in production (docker-compose / host firewall).
+    pop3:  { enabled: true,  listen: "0.0.0.0:1100", persona: "dovecot-mailhost" }
 
   llm:                       # Phase 2 — used when mode: llm
     provider: "static"       # "claude" | "ollama" | "openai_compat" | "static"

@@ -7,8 +7,6 @@ capability does not exist yet (it is a stub), not that it is hidden.
 
 ## A. Not implemented yet (by phase) — these are explicit stubs
 
-- **HTTP / MySQL / POP3 services (Phase 3).** Only SSH is implemented. Enabling
-  these in config emits a `NOT IMPLEMENTED` warning and the service is skipped.
 - **Session classifier (Phase 4).** Every session is stored with
   `session_classification = "unknown"`. **This is the single biggest caveat for
   the research question:** until the classifier exists, engagement cannot be
@@ -56,15 +54,38 @@ capability does not exist yet (it is a stub), not that it is hidden.
   network (`docker-compose.llm.yml`) or run bare-metal. `allow_llm_only` egress
   is not implemented (ADR-014).
 
+## A3. HTTP / MySQL / POP3 (Phase 3) — implemented, with these caveats
+
+- **HTTP:** minimal HTTP/1.1, **one request per connection** (Connection:
+  close) — no keep-alive/pipelining, chunked transfer-encoding, or TLS. Vanilla
+  serves a handful of templated paths and 404s the rest; attack-probe tagging
+  (SQLi/LFI/traversal/webshell/XSS) is a cheap regex signal, **not** the Phase 4
+  ATT&CK mapping. No multipart upload parsing.
+- **MySQL:** real handshake + credential capture + a COM_QUERY text-result-set
+  subset. **NOT IMPLEMENTED** (and marked in `services/mysql/protocol.py`): real
+  auth verification (any login is accepted; the password hash is not captured as
+  plaintext — only the username), `caching_sha2_password` negotiation, prepared
+  statements (`COM_STMT_*`), SSL/TLS, compression, multi-statement, LOCAL INFILE,
+  `CLIENT_DEPRECATE_EOF`. A real `mysql` CLI may negotiate features the emulator
+  doesn't support; it is exercised at the wire-protocol level in tests, not with
+  a production client.
+- **POP3:** USER/PASS/STAT/LIST/RETR/TOP/UIDL/DELE/NOOP/RSET/CAPA/QUIT. **NOT
+  IMPLEMENTED:** APOP, STLS/TLS, SASL, real DELE persistence across sessions.
+  LLM-fabricated RETR bodies may not byte-match the sizes reported by an earlier
+  LIST/STAT (sizing uses the canned mailbox).
+- **All three services in `llm` mode** share the same provider/cache/leak-guard
+  core as SSH (`engine/augment.py`); the same "no live LLM in CI" caveat applies.
+
 ## B. Verified vs. NOT verified in this build environment
 
 - ✅ **Application verified end-to-end without Docker.** `python -m deceptinet`
   was run as a real process; a real SSH client connected, authenticated, drove
   an interactive shell, and the full session (credentials, per-command events,
   timestamps, persisted virtual-FS state) was captured to the datastore. The
-  `/health` and `/stats` endpoints responded. 80 tests pass (including the
-  Phase 2 LLM engine, cache, validator, and providers — all with fakes/mocks,
-  no live LLM).
+  `/health` and `/stats` endpoints responded. All four services were also run
+  together as a real process and captured HTTP/MySQL/POP3 interactions. 87 tests
+  pass (incl. the Phase 2 LLM engine and Phase 3 HTTP/MySQL/POP3 adapters — all
+  with fakes/mocks, no live LLM).
 - ⚠️ **`docker compose up` was NOT executed here.** The build environment's
   network policy blocks the Docker registry (Docker Hub CDN returns HTTP 403),
   so the `python:3.11-slim` base image could not be pulled and no image could be

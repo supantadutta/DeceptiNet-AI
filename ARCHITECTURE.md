@@ -9,14 +9,16 @@ exists. See `LIMITATIONS.md` for the honest gap list.
 
 ```
    Attacker / scanner
-          │  (SSH on :2222)                         [HTTP/MySQL/POP3 → Phase 3]
+          │  SSH :2222   HTTP :8080   MySQL :3306   POP3 :1100
           ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ Exposure + Protocol Emulation Layer            deceptinet/services/ssh/   │
-│  • asyncssh listener: realistic OpenSSH banner, host keys (persisted)     │
-│  • auth: captures every credential, accepts after N tries (Cowrie-style)  │
-│  • PTY shell loop (asyncssh line editor) + exec ("ssh host 'cmd'") path   │
-│  • parses attacker input into command lines — NEVER executes anything     │
+│ Exposure + Protocol Emulation Layer            deceptinet/services/       │
+│  • SSH (asyncssh): banner, persisted host keys, credential capture, PTY   │
+│    shell (line editor) + exec path                                        │
+│  • HTTP: minimal HTTP/1.1, templated pages, attack-probe tagging          │
+│  • MySQL: handshake + auth capture + COM_QUERY result-set subset          │
+│  • POP3: USER/PASS/STAT/LIST/RETR/... + credential capture                │
+│  • all parse attacker input into events — NEVER execute anything          │
 └─────────────────────────────────────────────────────────────────────────┘
           │  command line + SessionState
           ▼
@@ -71,9 +73,9 @@ exists. See `LIMITATIONS.md` for the honest gap list.
 | Logging (structured JSON) | `logging_setup.py` | ✅ |
 | Containment (kill switch, egress probe) | `containment/` | ✅ |
 | SSH protocol adapter | `services/ssh/` | ✅ |
-| HTTP / MySQL / POP3 adapters | `services/` | ⛔ Phase 3 |
-| Vanilla engine | `engine/vanilla.py` | ✅ |
-| LLM engine (cache + validator + providers) | `engine/llm.py`, `cache.py`, `validator.py`, `providers/`, `prompts/` | ✅ Phase 2 |
+| HTTP / MySQL / POP3 adapters | `services/{http,mysql,pop3}/`, `services/base.py` | ✅ Phase 3 |
+| Vanilla engine (SSH) | `engine/vanilla.py` | ✅ |
+| LLM engine (SSH) + shared augmentor (HTTP/MySQL/POP3) | `engine/llm.py`, `augment.py`, `cache.py`, `validator.py`, `providers/`, `prompts/` | ✅ Phase 2–3 |
 | Session state + virtual FS + personas | `session/` | ✅ |
 | Telemetry recorder | `telemetry/recorder.py` | ✅ |
 | Classifier / IOC / ATT&CK mapper | `telemetry/{classifier,ioc,attack_map}.py` | ⛔ Phase 4 |

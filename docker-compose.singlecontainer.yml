@@ -18,6 +18,9 @@ services:
     ports:
       - "2222:2222"
       - "8000:8000"
+      - "8080:8080"
+      - "3306:3306"
+      - "1100:1100"
     volumes:
       - dndata:/data
     networks:

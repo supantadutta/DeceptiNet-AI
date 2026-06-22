@@ -2,6 +2,34 @@
 
 All notable changes to DeceptiNet-AI. Format loosely follows Keep a Changelog.
 
+## [0.3.0] — Phase 3 (HTTP, MySQL, POP3 services — both modes)
+
+### Added
+- **HTTP honeypot** (`services/http/`): minimal HTTP/1.1, templated pages
+  (index/login/admin/robots), 404 for unknown paths, full request capture
+  (method/path/headers/user-agent/body) and regex tagging of SQLi / LFI /
+  traversal / webshell / XSS probes. In llm mode, novel paths get generated bodies.
+- **MySQL honeypot** (`services/mysql/`): real handshake, credential (username)
+  capture, accept-any auth, and a `COM_QUERY` text-result-set subset (canned
+  tables; llm fabricates result sets via a strict TSV contract). Explicit
+  NOT IMPLEMENTED list in `protocol.py`.
+- **POP3 honeypot** (`services/pop3/`): USER/PASS/STAT/LIST/RETR/TOP/UIDL/DELE/
+  NOOP/RSET/CAPA/QUIT; canned mailbox (vanilla) or llm-fabricated RETR bodies.
+- **Shared `LLMAugmentor`** (`engine/augment.py`): the cache → provider
+  (+fallback) → leak-guard core reused by all three new services.
+- `services/base.py` (`TCPHoneypot`): listener lifecycle, kill-switch gating,
+  per-connection telemetry + in-flight task tracking.
+- Per-service prompt builders (`engine/prompts/{http,mysql,pop3}.py`).
+
+### Changed
+- All four services are enabled by default in `config.yaml` (POP3 on `:1100`).
+- Runner manages all services uniformly (start/stop/kill-switch/resume); Docker
+  publishes the new ports; health endpoint lists all four as implemented.
+
+### Tests
+- 87 passing (Phase 3 adds HTTP, POP3, and MySQL — incl. a real MySQL
+  handshake/auth/COM_QUERY round-trip via the wire-protocol helpers).
+
 ## [0.2.0] — Phase 2 (adaptive LLM response engine)
 
 ### Added

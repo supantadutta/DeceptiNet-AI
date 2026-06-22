@@ -44,7 +44,7 @@ def create_app(
             "mode": config.mode,
             "experiment_id": config.experiment_id,
             "enabled_services": enabled,
-            "implemented_services": ["ssh"],  # honest: only SSH in Phase 1
+            "implemented_services": ["ssh", "http", "mysql", "pop3"],
             "kill_switch_engaged": kill_switch.is_engaged(),
             "egress_policy": config.containment.egress,
         }

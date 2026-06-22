@@ -44,9 +44,9 @@ def make_test_config(**overrides) -> Config:
     """Build a valid Phase-1 config for tests, overriding fields as needed."""
     services = ServicesConfig(
         ssh=ServiceConfig(enabled=True, listen=f"127.0.0.1:{free_port()}", persona="ubuntu-22.04-webserver"),
-        http=ServiceConfig(enabled=False, listen="127.0.0.1:8080", persona="nginx-php-shop"),
-        mysql=ServiceConfig(enabled=False, listen="127.0.0.1:3306", persona="mysql-8-prod"),
-        pop3=ServiceConfig(enabled=False, listen="127.0.0.1:110", persona="dovecot-mailhost"),
+        http=ServiceConfig(enabled=True, listen=f"127.0.0.1:{free_port()}", persona="nginx-php-shop"),
+        mysql=ServiceConfig(enabled=True, listen=f"127.0.0.1:{free_port()}", persona="mysql-8-prod"),
+        pop3=ServiceConfig(enabled=True, listen=f"127.0.0.1:{free_port()}", persona="dovecot-mailhost"),
     )
     base = dict(
         mode="vanilla",

@@ -29,6 +29,6 @@ ENV DECEPTINET_HOSTKEY_DIR=/data/hostkeys \
     DECEPTINET_KILL_SWITCH_FILE=/tmp/deceptinet.stop \
     DECEPTINET_HEALTH_LISTEN=0.0.0.0:8000
 
-EXPOSE 2222 8000
+EXPOSE 2222 8000 8080 3306 1100
 
 CMD ["python", "-m", "deceptinet"]

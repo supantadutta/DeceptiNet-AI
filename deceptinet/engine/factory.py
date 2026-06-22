@@ -44,3 +44,25 @@ def get_engine(
         )
 
     raise ValueError(f"unknown mode: {config.mode!r}")
+
+
+def build_augmentor(config: Config, *, provider=None, fallback_provider=None):
+    """Build a shared :class:`~deceptinet.engine.augment.LLMAugmentor` for the
+    HTTP/MySQL/POP3 services, or ``None`` in vanilla mode.
+
+    ``provider`` may be injected by tests to avoid real network providers.
+    """
+    if config.mode != "llm":
+        return None
+    from deceptinet.engine.augment import LLMAugmentor
+    from deceptinet.engine.providers import build_provider
+
+    if provider is None:
+        provider = build_provider(config.llm.provider, config.llm)
+    if fallback_provider is None and config.llm.fallback_provider != config.llm.provider:
+        fallback_provider = build_provider(config.llm.fallback_provider, config.llm)
+    return LLMAugmentor(
+        provider,
+        fallback_provider=fallback_provider,
+        cache=ResponseCache(enabled=config.cache.enabled, semantic=config.cache.semantic),
+    )

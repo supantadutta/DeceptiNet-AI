@@ -13,13 +13,15 @@
 - **RQ3:** What is the cost (latency, compute, $) of the LLM approach, and when
   does latency-based fingerprinting expose it?
 
-## What is measurable today (Phases 1–2)
+## What is measurable today (Phases 1–3)
 
-Captured per session (SSH, **both** `vanilla` and `llm` modes): source IP/port,
-SSH client version, terminal type, every credential attempt (with real attempt
-timestamps), every command (with per-event timestamps, exit status, response
-latency, `cache_hit`, `engine_mode`, and LLM token counts in `meta`), and
-persisted virtual-FS interactions. Sessions are stored with
+Captured per session across **four services** (SSH, HTTP, MySQL, POP3) in
+**both** `vanilla` and `llm` modes: source IP/port, credentials attempted (with
+real timestamps), and every interaction event (with per-event timestamps,
+`engine_mode`, `cache_hit`, response latency, LLM token counts, and
+service-specific fields — e.g. HTTP method/path/user-agent/attack-hints, SQL
+queries, POP3 verbs). SSH additionally captures the client version, terminal
+type, and persisted virtual-FS interactions. Sessions are stored with
 `session_classification = "unknown"` until the Phase 4 classifier exists.
 
 This is the raw substrate the later phases analyse. It is **not** yet an

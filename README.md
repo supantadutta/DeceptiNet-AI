@@ -12,12 +12,11 @@ conditions.
 
 ---
 
-## Build status — Phases 0, 1 & 2 complete
+## Build status — Phases 0–3 complete
 
-This repository implements **Phase 0 (scaffolding & guardrails)**, **Phase 1
-(SSH service, vanilla mode, end-to-end)**, and **Phase 2 (adaptive LLM response
-engine)**. Later phases are present only as honest stubs that raise/inform
-`NOT IMPLEMENTED`.
+This repository implements **Phase 0** (scaffolding & guardrails), **Phase 1**
+(SSH, vanilla), **Phase 2** (adaptive LLM response engine), and **Phase 3**
+(HTTP, MySQL, POP3 — both modes). Later phases are present only as honest stubs.
 
 | Capability | Status |
 |---|---|
@@ -25,11 +24,13 @@ engine)**. Later phases are present only as honest stubs that raise/inform
 | Structured JSON logging | ✅ implemented |
 | Containment: kill switch + egress posture | ✅ implemented (egress enforced by Docker; see caveats) |
 | Datastore (SQLite / Postgres) + telemetry capture | ✅ implemented |
-| SSH honeypot, **vanilla** mode (banner, auth capture, PTY shell, virtual FS) | ✅ implemented |
-| **LLM** response engine (mode `llm`): providers + cache + leak guard | ✅ Phase 2 |
+| SSH honeypot (banner, auth capture, PTY shell, virtual FS) | ✅ implemented |
+| HTTP honeypot (templated pages, attack-probe tagging) | ✅ Phase 3 |
+| MySQL honeypot (handshake, auth capture, COM_QUERY subset) | ✅ Phase 3 |
+| POP3 honeypot (USER/PASS/STAT/LIST/RETR/...) | ✅ Phase 3 |
+| **LLM** response engine + cache + leak guard (all services) | ✅ Phase 2 |
 | LLM providers: Claude (SDK), Ollama, OpenAI-compatible, static | ✅ Phase 2 |
 | Health endpoint | ✅ implemented |
-| HTTP / MySQL / POP3 services | ⛔ Phase 3 (NOT IMPLEMENTED) |
 | Session classifier / IOC / ATT&CK mapping | ⛔ Phase 4 (NOT IMPLEMENTED) |
 | Comparison harness + statistics + figures | ⛔ Phase 5 (NOT IMPLEMENTED) |
 | Full dashboard UI | ⛔ Phase 6 (minimal health/stats only) |
@@ -64,8 +65,10 @@ make venv          # create .venv and install deps
 make run-local     # starts the SSH honeypot + health endpoint
 ```
 
-By default this listens for SSH on `0.0.0.0:2222` and serves health on
-`0.0.0.0:8000`, writing telemetry to `data/deceptinet.sqlite3`.
+By default this starts all four honeypot services — SSH `:2222`, HTTP `:8080`,
+MySQL `:3306`, POP3 `:1100` — plus the health endpoint on `:8000`, writing
+telemetry to `data/deceptinet.sqlite3`. (POP3 uses `:1100` so it binds as a
+non-root user; map host `110 → 1100` in production.)
 
 Connect to it (from another shell) — **any** password works after 2 attempts,
 and `root:root` / `root:123456` / `admin:admin` are accepted immediately:
